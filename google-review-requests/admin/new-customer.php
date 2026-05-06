@@ -5,6 +5,11 @@ if (! defined('ABSPATH')) {
 ?>
 <div class="wrap">
     <h1>Nieuwe klant toevoegen</h1>
+
+    <?php if (isset($_GET['grr_notice']) && 'insert_error' === $_GET['grr_notice']) : ?>
+        <div class="notice notice-error"><p>Klant opslaan mislukt. Controleer de velden en probeer opnieuw.</p></div>
+    <?php endif; ?>
+
     <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="max-width:700px; background:#fff; padding:16px; border:1px solid #ddd;">
         <?php wp_nonce_field('grr_save_customer'); ?>
         <input type="hidden" name="action" value="grr_save_customer" />

@@ -16,6 +16,15 @@ function grr_status_ui($status) {
 <div class="wrap">
     <h1>Google Review Requests</h1>
 
+    <?php if (isset($_GET['grr_notice']) && 'customer_deleted' === $_GET['grr_notice']) : ?>
+        <div class="notice notice-success is-dismissible"><p>Klant succesvol verwijderd.</p></div>
+    <?php elseif (isset($_GET['grr_notice']) && 'delete_error' === $_GET['grr_notice']) : ?>
+        <div class="notice notice-error is-dismissible"><p>Verwijderen mislukt.</p></div>
+    <?php elseif (isset($_GET['grr_notice']) && 'customer_added' === $_GET['grr_notice']) : ?>
+        <div class="notice notice-success is-dismissible"><p>Klant succesvol toegevoegd.</p></div>
+    <?php endif; ?>
+
+
     <form method="post" action="options.php" style="max-width:700px; background:#fff; padding:16px; border:1px solid #ddd; margin-bottom:20px;">
         <?php settings_fields('general'); ?>
         <table class="form-table">
@@ -43,6 +52,7 @@ function grr_status_ui($status) {
             <?php
             $status = (string) $customer->status;
             $normalized_status = $status;
+            if ('planned' === $normalized_status) { $normalized_status = 'gepland'; }
             if (in_array($status, ['completed', 'afgerond'], true)) {
                 $normalized_status = 'review_placed';
             }
@@ -62,7 +72,7 @@ function grr_status_ui($status) {
                         <input type="hidden" name="action" value="grr_update_status" />
                         <input type="hidden" name="customer_id" value="<?php echo (int) $customer->id; ?>" />
                         <select name="status">
-                            <option value="planned" <?php selected($normalized_status, 'planned'); ?>>Gepland</option>
+                            <option value="gepland" <?php selected($normalized_status, 'gepland'); ?>>Gepland</option>
                             <option value="review_sent" <?php selected($normalized_status, 'review_sent'); ?>>Review verzonden</option>
                             <option value="review_placed" <?php selected($normalized_status, 'review_placed'); ?>>Review geplaatst</option>
                         </select>
@@ -74,6 +84,13 @@ function grr_status_ui($status) {
                         <input type="hidden" name="action" value="grr_send_now" />
                         <input type="hidden" name="customer_id" value="<?php echo (int) $customer->id; ?>" />
                         <button class="button button-primary button-small">Review nu versturen</button>
+                    </form>
+
+                    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" onsubmit="return confirm('Weet je zeker dat je deze klant wilt verwijderen?');" style="margin-top:6px;">
+                        <?php wp_nonce_field('grr_delete_customer'); ?>
+                        <input type="hidden" name="action" value="grr_delete_customer" />
+                        <input type="hidden" name="customer_id" value="<?php echo (int) $customer->id; ?>" />
+                        <button class="button button-small" style="color:#b32d2e;border-color:#b32d2e;">Verwijderen</button>
                     </form>
                 </td>
             </tr>
