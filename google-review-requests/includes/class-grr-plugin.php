@@ -28,6 +28,8 @@ class GRR_Plugin {
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_post_grr_save_customer', [$this, 'handle_save_customer']);
         add_action('admin_post_grr_update_status', [$this, 'handle_update_status']);
+        add_action('admin_post_grr_send_now', [$this, 'handle_send_now']);
+        add_action('admin_post_grr_send_test_mail', [$this, 'handle_send_test_mail']);
         add_action(self::CRON_HOOK, [$this, 'process_scheduled_emails']);
     }
 
@@ -201,6 +203,80 @@ class GRR_Plugin {
         exit;
     }
 
+
+
+    public function handle_send_now() {
+        if (! current_user_can('manage_options')) {
+            wp_die(__('Geen toegang.', 'grr'));
+        }
+
+        check_admin_referer('grr_send_now');
+
+        global $wpdb;
+        $customer_id = isset($_POST['customer_id']) ? absint($_POST['customer_id']) : 0;
+
+        if ($customer_id < 1) {
+            wp_safe_redirect(admin_url('admin.php?page=grr-dashboard'));
+            exit;
+        }
+
+        $customer = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->customers_table} WHERE id = %d", $customer_id));
+
+        if (! $customer) {
+            wp_safe_redirect(admin_url('admin.php?page=grr-dashboard'));
+            exit;
+        }
+
+        $sent = $this->send_review_email($customer);
+
+        if ($sent) {
+            $wpdb->update(
+                $this->customers_table,
+                [
+                    'status' => 'review_sent',
+                    'review_sent_at' => current_time('mysql'),
+                    'updated_at' => current_time('mysql'),
+                ],
+                ['id' => $customer->id]
+            );
+        }
+
+        wp_safe_redirect(admin_url('admin.php?page=grr-dashboard'));
+        exit;
+    }
+
+    public function handle_send_test_mail() {
+        if (! current_user_can('manage_options')) {
+            wp_die(__('Geen toegang.', 'grr'));
+        }
+
+        check_admin_referer('grr_send_test_mail');
+
+        $admin_email = get_option('admin_email');
+        $review_link = esc_url_raw(get_option('grr_google_review_link', ''));
+
+        $subject = __('Testmail: Google review verzoek', 'grr');
+        $body = sprintf(
+            "Dit is een testmail voor Google review verzoeken.\n\nReview link: %s",
+            $review_link ?: __('Niet ingesteld', 'grr')
+        );
+
+        $sent = wp_mail($admin_email, $subject, $body);
+
+        $this->log_message(
+            0,
+            'test_mail',
+            $admin_email,
+            $subject,
+            $body,
+            $sent ? 'sent' : 'failed',
+            $sent ? null : 'wp_mail returned false'
+        );
+
+        wp_safe_redirect(admin_url('admin.php?page=grr-dashboard'));
+        exit;
+    }
+
     public function process_scheduled_emails() {
         global $wpdb;
 
@@ -239,6 +315,15 @@ class GRR_Plugin {
     private function send_review_email($customer) {
         $review_link = esc_url_raw(get_option('grr_google_review_link', ''));
         if (empty($review_link)) {
+            $this->log_message(
+                (int) $customer->id,
+                'review_request',
+                $customer->email,
+                __('Google review link ontbreekt', 'grr'),
+                '',
+                'failed',
+                'Google review link is not configured'
+            );
             return false;
         }
 

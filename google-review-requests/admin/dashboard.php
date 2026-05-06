@@ -17,6 +17,12 @@ if (! defined('ABSPATH')) {
         <?php submit_button('Opslaan'); ?>
     </form>
 
+    <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-bottom:20px;">
+        <?php wp_nonce_field('grr_send_test_mail'); ?>
+        <input type="hidden" name="action" value="grr_send_test_mail" />
+        <button class="button button-secondary">Testmail versturen</button>
+    </form>
+
     <h2>Klanten</h2>
     <table class="widefat striped">
         <thead>
@@ -51,6 +57,12 @@ if (! defined('ABSPATH')) {
                                     <option value="review_sent" <?php selected($customer->status, 'review_sent'); ?>>Review verzonden</option>
                                 </select>
                                 <button class="button button-small">Update</button>
+                            </form>
+                            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="margin-top:6px;">
+                                <?php wp_nonce_field('grr_send_now'); ?>
+                                <input type="hidden" name="action" value="grr_send_now" />
+                                <input type="hidden" name="customer_id" value="<?php echo (int) $customer->id; ?>" />
+                                <button class="button button-primary button-small">Review nu versturen</button>
                             </form>
                         </td>
                     </tr>
